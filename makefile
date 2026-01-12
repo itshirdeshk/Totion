@@ -1,4 +1,4 @@
 build:
 	@go build -o totion .
-run: 
+run: build
 	@./totion
