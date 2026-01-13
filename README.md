@@ -95,7 +95,7 @@ This project is open source. Please check the repository for license details.
 
 ## Author
 
-[Hirdesh Kumar](https://github.com/itshirdeshk)
+[Hirdesh Khandelwal](https://github.com/itshirdeshk)
 
 ---
 
