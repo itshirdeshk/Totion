@@ -1,4 +1,4 @@
-package main
+package tui
 
 import (
 	"fmt"
@@ -6,36 +6,8 @@ import (
 	"os"
 
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
-
-var (
-	vaultDir       string
-	textInputStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-	docStyle       = lipgloss.NewStyle().Margin(1, 2)
-)
-
-// Main init function of our go program
-func init() {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatal("error getting home directory", err)
-	}
-
-	vaultDir = fmt.Sprintf("%s/.totion", homeDir)
-}
-
-type model struct {
-	newFileInput           textinput.Model
-	createFileInputVisible bool
-	currentFile            *os.File
-	noteTextArea           textarea.Model
-	list                   list.Model
-	showingList            bool
-}
 
 type item struct {
 	title, desc string
@@ -45,82 +17,7 @@ func (i item) Title() string       { return i.title }
 func (i item) Description() string { return i.desc }
 func (i item) FilterValue() string { return i.title }
 
-// Init function of our bubble tea
-func (m model) Init() tea.Cmd {
-	return nil
-}
-
-func initializeModel() model {
-
-	err := os.MkdirAll(vaultDir, 0750)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Initialize new file text input
-	ti := textinput.New()
-	ti.Placeholder = "Enter file name..."
-	ti.Focus()
-	ti.CharLimit = 256
-	ti.Width = 20
-	ti.Cursor.Style = textInputStyle
-	ti.PromptStyle = textInputStyle
-	ti.TextStyle = textInputStyle
-
-	ta := textarea.New()
-	ta.Placeholder = "Write your note here..."
-	ta.ShowLineNumbers = false
-	ta.Focus()
-
-	// note list
-	noteList := listFiles()
-	finalList := list.New(noteList, list.NewDefaultDelegate(), 0, 0)
-	finalList.Title = "All List 📙"
-	finalList.Styles.Title = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("16")).
-		Background(lipgloss.Color("254")).
-		Padding(0, 1)
-
-	return model{
-		newFileInput:           ti,
-		createFileInputVisible: false,
-		noteTextArea:           ta,
-		list:                   finalList,
-	}
-}
-
-func (m model) View() string {
-	var styleForWelcome = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("16")).
-		Background(lipgloss.Color("205")).
-		PaddingLeft(2).
-		PaddingRight(2)
-
-	var styleForHelp = lipgloss.NewStyle()
-
-	welcome := styleForWelcome.Render("Welcome to Totion 🧠")
-
-	help := styleForHelp.Render("Ctrl+N: new file • Ctrl+L: list • Esc: back • Ctrl+S: save • Ctrl+Q: quit")
-
-	view := ""
-
-	if m.createFileInputVisible {
-		view = m.newFileInput.View()
-	}
-
-	if m.currentFile != nil {
-		view = m.noteTextArea.View()
-	}
-
-	if m.showingList {
-		view = m.list.View()
-	}
-
-	return fmt.Sprintf("\n%s\n\n%s\n\n%s", welcome, view, help)
-}
-
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -164,7 +61,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.showingList {
 				item, ok := m.list.SelectedItem().(item)
 				if ok {
-					filePath := fmt.Sprintf("%s/%s", vaultDir, item.title)
+					filePath := fmt.Sprintf("%s/%s", VaultDir, item.title)
 					content, err := os.ReadFile(filePath)
 
 					if err != nil {
@@ -188,7 +85,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// todo: create file
 			fileName := m.newFileInput.Value()
 			if fileName != "" {
-				filePath := fmt.Sprintf("%s/%s.md", vaultDir, fileName)
+				filePath := fmt.Sprintf("%s/%s.md", VaultDir, fileName)
 
 				if _, err := os.Stat(filePath); err == nil {
 					return m, nil
@@ -248,18 +145,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func main() {
-	p := tea.NewProgram(initializeModel())
-	if _, err := p.Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
-		os.Exit(1)
-	}
-}
-
 func listFiles() []list.Item {
 	items := make([]list.Item, 0)
 
-	entries, err := os.ReadDir(vaultDir)
+	entries, err := os.ReadDir(VaultDir)
 	if err != nil {
 		log.Fatal("error reading notes")
 	}
